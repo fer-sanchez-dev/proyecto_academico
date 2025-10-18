@@ -164,8 +164,44 @@ if not DEBUG:
 # ======================
 # Logging (archivo)
 # ======================
+import os
+from pathlib import Path
+
 LOG_DIR = Path(os.getenv("DJANGO_LOG_DIR", "/app/logs"))
-LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+# Intentar crear el directorio, pero manejar errores de permisos
+try:
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    # Verificar si podemos escribir
+    test_file = LOG_DIR / '.write_test'
+    test_file.touch()
+    test_file.unlink()
+    LOG_FILE = str(LOG_DIR / 'django.log')
+    USE_FILE_HANDLER = True
+except (PermissionError, OSError):
+    print(f"⚠️ No se puede escribir en {LOG_DIR}, usando solo consola para logs")
+    LOG_FILE = None
+    USE_FILE_HANDLER = False
+
+# Configuración base de handlers
+handlers = {
+    'console': {
+        'class': 'logging.StreamHandler',
+        'formatter': 'verbose',
+    },
+}
+
+# Solo agregar el handler de archivo si tenemos permisos
+if USE_FILE_HANDLER:
+    handlers['file'] = {
+        'level': 'ERROR',
+        'class': 'logging.FileHandler',
+        'filename': LOG_FILE,
+        'formatter': 'verbose',
+    }
+    handler_list = ['console', 'file']
+else:
+    handler_list = ['console']
 
 LOGGING = {
     'version': 1,
@@ -180,38 +216,26 @@ LOGGING = {
             'style': '{',
         },
     },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
-        },
-        'file': {
-            'level': 'ERROR',
-            'class': 'logging.FileHandler',
-            'filename': str(LOG_DIR / 'django.log'),
-            'formatter': 'verbose',
-        },
-    },
+    'handlers': handlers,
     'loggers': {
         'django': {
-            'handlers': ['console', 'file'],
+            'handlers': handler_list,
             'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
             'propagate': False,
         },
         'django.request': {
-            'handlers': ['console', 'file'],
+            'handlers': handler_list,
             'level': 'ERROR',
             'propagate': False,
         },
-        # 👇 AÑADIDO: Logger específico para tu aplicación
         'app': {
-            'handlers': ['console', 'file'],
+            'handlers': handler_list,
             'level': 'INFO',
             'propagate': False,
         },
     },
     'root': {
-        'handlers': ['console', 'file'],
+        'handlers': handler_list,
         'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
     },
 }

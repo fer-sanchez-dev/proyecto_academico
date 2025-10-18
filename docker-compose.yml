@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   web:
     build:
@@ -18,7 +16,7 @@ services:
     
     # Volúmenes para persistencia
     volumes:
-      - ./logs:/app/logs
+      - logs_volume:/app/logs
       - static_volume:/vol/static
       - media_volume:/vol/media
     
@@ -66,4 +64,5 @@ volumes:
     driver: local
   static_volume:
   media_volume:
+  logs_volume:
 
