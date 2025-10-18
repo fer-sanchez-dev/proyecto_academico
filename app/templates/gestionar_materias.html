@@ -1,0 +1,260 @@
+<!-- RF06 -->
+{% extends 'base.html' %}
+{% block content %}
+<br>
+<br>
+
+<div class="container">
+    <div class="dashboard-header">
+        <h2><i class="fas fa-book"></i> Gestionar Materias</h2>
+        <p>Administra el catálogo de materias y asignación de profesores</p>
+    </div>
+
+    <!-- Mostrar mensajes -->
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    <i class="fas fa-info-circle"></i>
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-list"></i> Lista de Materias</h3>
+        </div>
+        <div class="card-body">
+            {% if cursos %}
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th><i class="fas fa-book"></i> Materia</th>
+                                <th><i class="fas fa-align-left"></i> Descripción</th>
+                                <th><i class="fas fa-chalkboard-teacher"></i> Profesor</th>
+                                <th><i class="fas fa-cogs"></i> Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for curso in cursos %}
+                                <tr>
+                                    <td data-label="Materia">
+                                        <span class="course-badge">{{ curso.nombre }}</span>
+                                    </td>
+                                    <td data-label="Descripción">
+                                        {{ curso.descripcion|default:"Sin descripción" }}
+                                    </td>
+                                    <td data-label="Profesor">
+                                        <div class="student-info">
+                                            <i class="fas fa-user-tie student-avatar"></i>
+                                            <span>{{ curso.profesor.username }}</span>
+                                        </div>
+                                    </td>
+                                    <td data-label="Acciones">
+                                        <button type="button" class="btn btn-primary btn-sm edit-materia-btn" 
+                                                data-id="{{ curso.id }}" 
+                                                data-nombre="{{ curso.nombre }}" 
+                                                data-descripcion="{{ curso.descripcion }}" 
+                                                data-profesor="{{ curso.profesor.id }}">
+                                            <i class="fas fa-edit"></i> Editar
+                                        </button>
+                                        <a href="?delete={{ curso.id }}" 
+                                           onclick="return confirm('¿Seguro que deseas eliminar esta materia?');" 
+                                           class="btn btn-danger btn-sm">
+                                            <i class="fas fa-trash-alt"></i> Eliminar
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-book-open empty-icon"></i>
+                    <p>No hay materias registradas.</p>
+                    <small>Comienza agregando tu primera materia</small>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Botón para mostrar/ocultar formulario -->
+    <div class="form-toggle-section">
+        {% if not show_form %}
+            <button class="btn btn-success btn-lg" onclick="toggleForm(true)">
+                <i class="fas fa-plus-circle"></i> 
+                Agregar Nueva Materia
+            </button>
+        {% else %}
+            <button class="btn btn-secondary" onclick="toggleForm(false)">
+                <i class="fas fa-times"></i> 
+                Ocultar Formulario
+            </button>
+        {% endif %}
+    </div>
+
+    <!-- Formulario de registro/edición -->
+    <div class="card form-card" id="materia-form" style="display: none;">
+        <div class="card-header">
+            <h4 id="form-title"><i class="fas fa-plus-circle"></i> Agregar Nueva Materia</h4>
+        </div>
+        <div class="card-body">
+            <form method="post" id="materiaForm">
+                {% csrf_token %}
+                <input type="hidden" name="update_id" id="update_id">
+                
+                <div class="form-section">
+                    <h5 class="section-title">
+                        <i class="fas fa-info-circle"></i>
+                        Información de la Materia
+                    </h5>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="nombre">
+                                <i class="fas fa-book"></i> Nombre de la Materia
+                            </label>
+                            <input type="text" 
+                                   name="nombre" 
+                                   id="nombre" 
+                                   class="form-control" 
+                                   required 
+                                   placeholder="Ej: Matemáticas Avanzadas">
+                        </div>
+                        <div class="form-group">
+                            <label for="profesor">
+                                <i class="fas fa-chalkboard-teacher"></i> Profesor Asignado
+                            </label>
+                            <select name="profesor" id="profesor" class="form-control" required>
+                                <option value="">Seleccionar profesor...</option>
+                                {% for user in profesores %}
+                                    <option value="{{ user.id }}">
+                                        {{ user.first_name }} {{ user.last_name }} ({{ user.username }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="descripcion">
+                            <i class="fas fa-align-left"></i> Descripción
+                        </label>
+                        <textarea name="descripcion" 
+                                  id="descripcion" 
+                                  class="form-control" 
+                                  rows="3" 
+                                  placeholder="Descripción opcional de la materia..."></textarea>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" name="update" class="btn btn-success btn-lg">
+                        <i class="fas fa-save"></i> 
+                        <span id="btn-text">Guardar Materia</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="cancelEdit()">
+                        <i class="fas fa-times"></i> 
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Función para mostrar/ocultar formulario
+function toggleForm(show) {
+    const form = document.getElementById('materia-form');
+    if (show) {
+        form.style.display = 'block';
+        // NO limpiar el formulario aquí si venimos de edición
+    } else {
+        form.style.display = 'none';
+        clearForm(); // Solo limpiar cuando ocultamos
+    }
+}
+
+// Función para limpiar formulario
+function clearForm() {
+    const form = document.getElementById('materiaForm');
+    form.reset();
+    
+    // Limpiar campos específicos
+    document.getElementById('update_id').value = '';
+    document.getElementById('nombre').value = '';
+    document.getElementById('descripcion').value = '';
+    document.getElementById('profesor').value = '';
+    
+    // Restaurar títulos para "nuevo"
+    document.getElementById('form-title').innerHTML = '<i class="fas fa-plus-circle"></i> Agregar Nueva Materia';
+    document.getElementById('btn-text').textContent = 'Guardar Materia';
+    
+    console.log('Formulario limpiado'); // Debug
+}
+
+// Función para cancelar edición
+function cancelEdit() {
+    clearForm();
+    toggleForm(false);
+}
+
+// Manejar edición inline
+document.addEventListener('DOMContentLoaded', function() {
+    // Manejar botones de editar
+    document.querySelectorAll('.edit-materia-btn').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault(); // Prevenir comportamiento por defecto
+            
+            // Obtener datos del botón
+            const id = this.dataset.id;
+            const nombre = this.dataset.nombre;
+            const descripcion = this.dataset.descripcion || '';
+            const profesor = this.dataset.profesor;
+            
+            console.log('Editando materia:', {id, nombre, descripcion, profesor}); // Debug
+            
+            // Llenar formulario con datos
+            document.getElementById('update_id').value = id;
+            document.getElementById('nombre').value = nombre;
+            document.getElementById('descripcion').value = descripcion;
+            document.getElementById('profesor').value = profesor;
+            
+            // Cambiar títulos para "editar"
+            document.getElementById('form-title').innerHTML = '<i class="fas fa-edit"></i> Editar Materia';
+            document.getElementById('btn-text').textContent = 'Actualizar Materia';
+            
+            // Mostrar formulario
+            toggleForm(true);
+            
+            // Enfocar en nombre
+            document.getElementById('nombre').focus();
+            
+            // Verificar que el update_id se estableció correctamente
+            console.log('Update ID establecido:', document.getElementById('update_id').value);
+        });
+    });
+    
+    // Verificar si debe mostrarse el formulario por parámetro GET
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('show_form') === 'true') {
+        toggleForm(true);
+    }
+    
+    // Debug: Verificar envío del formulario
+    document.getElementById('materiaForm').addEventListener('submit', function(e) {
+        const updateId = document.getElementById('update_id').value;
+        console.log('Enviando formulario con update_id:', updateId);
+        
+        if (updateId && updateId.trim()) {
+            console.log('Modo: ACTUALIZAR materia ID', updateId);
+        } else {
+            console.log('Modo: CREAR nueva materia');
+        }
+    });
+});
+</script>
+{% endblock %}

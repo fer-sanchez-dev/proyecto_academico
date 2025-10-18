@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+    <div class="dashboard-header">
+        <h2><i class="fas fa-robot"></i> Configuración del Agente IA</h2>
+        <p>Configura los parámetros y criterios del asistente inteligente</p>
+    </div>
+
+    <!-- Mensajes -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-circle{% elif message.tags == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %}"></i>
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-cogs"></i> Configuración General</h3>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="form-section">
+                    <h4 class="section-title">
+                        <i class="fas fa-chart-line"></i> Umbrales de Rendimiento
+                    </h4>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="{{ form.umbral_bajo.id_for_label }}">
+                                <i class="fas fa-exclamation-triangle"></i> Umbral Bajo
+                            </label>
+                            <input type="number" 
+                                   step="0.1" 
+                                   min="0" 
+                                   max="5" 
+                                   class="form-control" 
+                                   id="{{ form.umbral_bajo.id_for_label }}" 
+                                   name="{{ form.umbral_bajo.name }}" 
+                                   value="{{ form.umbral_bajo.value|default:'' }}"
+                                   placeholder="Ejemplo: 3.0">
+                            <small class="form-text text-muted">
+                                Calificación por debajo de la cual se considera rendimiento bajo
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.umbral_medio.id_for_label }}">
+                                <i class="fas fa-check-circle"></i> Umbral Medio
+                            </label>
+                            <input type="number" 
+                                   step="0.1" 
+                                   min="0" 
+                                   max="5" 
+                                   class="form-control" 
+                                   id="{{ form.umbral_medio.id_for_label }}" 
+                                   name="{{ form.umbral_medio.name }}" 
+                                   value="{{ form.umbral_medio.value|default:'' }}"
+                                   placeholder="Ejemplo: 4.0">
+                            <small class="form-text text-muted">
+                                Calificación por encima de la cual se considera rendimiento bueno
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4 class="section-title">
+                        <i class="fas fa-bell"></i> Sistema de Alertas
+                    </h4>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.frecuencia_alertas.id_for_label }}">
+                            <i class="fas fa-clock"></i> Frecuencia de Alertas
+                        </label>
+                        <select class="form-control" 
+                                id="{{ form.frecuencia_alertas.id_for_label }}" 
+                                name="{{ form.frecuencia_alertas.name }}">
+                            {% for value, label in form.frecuencia_alertas.field.choices %}
+                                <option value="{{ value }}" 
+                                        {% if form.frecuencia_alertas.value == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">
+                            Con qué frecuencia el sistema enviará alertas automáticas
+                        </small>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4 class="section-title">
+                        <i class="fas fa-lightbulb"></i> Criterios de Recomendación
+                    </h4>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.criterios_recomendacion.id_for_label }}">
+                            <i class="fas fa-list-ul"></i> Criterios de Recomendación
+                        </label>
+                        <textarea class="form-control" 
+                                  id="{{ form.criterios_recomendacion.id_for_label }}" 
+                                  name="{{ form.criterios_recomendacion.name }}" 
+                                  rows="6"
+                                  placeholder="Ingresa los criterios que el agente IA debe considerar para generar recomendaciones personalizadas...">{{ form.criterios_recomendacion.value|default:'' }}</textarea>
+                        <small class="form-text text-muted">
+                            Define los parámetros y reglas que el agente utilizará para generar recomendaciones personalizadas
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Información adicional -->
+                <div class="form-section">
+                    <h5 class="section-title">
+                        <i class="fas fa-info-circle"></i>
+                        Información del Sistema
+                    </h5>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <div class="alert alert-success">
+                                <i class="fas fa-shield-alt"></i>
+                                <div>
+                                    <strong>Seguridad</strong>
+                                    <p>El agente utiliza algoritmos seguros para el análisis de datos</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="alert alert-warning">
+                                <i class="fas fa-chart-line"></i>
+                                <div>
+                                    <strong>Precisión</strong>
+                                    <p>Análisis predictivo basado en patrones de rendimiento</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="fas fa-save"></i> 
+                        Guardar Configuración
+                    </button>
+                    <a href="{% url 'dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> 
+                        Cancelar
+                    </a>
+                    <button type="button" class="btn btn-primary" onclick="resetToDefaults()">
+                        <i class="fas fa-undo"></i>
+                        Valores por Defecto
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function resetToDefaults() {
+    if (confirm('¿Estás seguro de que quieres restablecer todos los valores a sus configuraciones por defecto?')) {
+        window.location.href = window.location.href + '?reset=true';
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<br>
+<br>
+
+<div class="container">
+    <div class="dashboard-header">
+        <h2>Dashboard Profesor</h2>
+        <p>Gestiona las calificaciones de tus estudiantes</p>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-chart-line"></i> Gestionar Calificaciones</h3>
+        </div>
+        <div class="card-body">
+            <!-- Tabla de calificaciones existentes -->
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-user"></i> Estudiante</th>
+                            <th><i class="fas fa-book"></i> Curso</th>
+                            <th><i class="fas fa-star"></i> Nota</th>
+                            <th><i class="fas fa-comment"></i> Descripción</th>
+                            <th><i class="fas fa-calendar"></i> Fecha</th>
+                            <th><i class="fas fa-cogs"></i> Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for calificacion in calificaciones %}
+                            <tr>
+                                <td data-label="Estudiante" class="student-name">
+                                    <div class="student-info">
+                                        <i class="fas fa-user-circle student-avatar"></i>
+                                        <span>{{ calificacion.estudiante.usuario.first_name }} {{ calificacion.estudiante.usuario.last_name }}</span>
+                                    </div>
+                                </td>
+                                <td data-label="Curso">
+                                    <span class="course-badge">{{ calificacion.curso.nombre }}</span>
+                                </td>
+                                <td data-label="Nota">
+                                    <div class="grade-display">
+                                        <span class="grade-value">{{ calificacion.nota }}</span>
+                                        <form method="post" action="{% url 'gestionar_calificaciones' %}" class="grade-edit-form" style="display: none;">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="update_id" value="{{ calificacion.id }}">
+                                            <!-- CAMPOS OBLIGATORIOS AGREGADOS -->
+                                            <input type="hidden" name="estudiante" value="{{ calificacion.estudiante.id }}">
+                                            <input type="hidden" name="curso" value="{{ calificacion.curso.id }}">
+                                            <input type="hidden" name="descripcion" value="{{ calificacion.descripcion }}">
+                                            <div class="grade-input-group">
+                                                <input type="number" 
+                                                       name="nota" 
+                                                       value="{{ calificacion.nota }}" 
+                                                       min="0" 
+                                                       max="5" 
+                                                       step="0.1" 
+                                                       required 
+                                                       class="form-control grade-input">
+                                                <button type="submit" name="update" value="1" class="btn btn-primary btn-sm">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-secondary btn-sm cancel-edit">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </div>
+                                        </form>
+                                        <button type="button" class="btn btn-outline btn-sm edit-grade">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                                <td data-label="Descripción" class="description-cell">
+                                    <span class="description-text">{{ calificacion.descripcion|default:"Sin descripción" }}</span>
+                                </td>
+                                <td data-label="Fecha">
+                                    <span class="date-badge">{{ calificacion.fecha|date:"d/m/Y" }}</span>
+                                </td>
+                                <td data-label="Acciones">
+                                    <a href="?delete={{ calificacion.id }}" 
+                                        onclick="return showConfirm('¿Estás seguro de eliminar esta calificación?', () => window.location.href=this.href);" 
+                                        class="btn btn-danger btn-sm">
+                                        <i class="fas fa-trash-alt"></i> Eliminar
+                                    </a>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="6" class="empty-state">
+                                    <div class="empty-message">
+                                        <i class="fas fa-clipboard-list empty-icon"></i>
+                                        <p>No hay calificaciones registradas.</p>
+                                        <small>Comienza registrando tu primera calificación</small>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Botón para mostrar/ocultar formulario -->
+    <div class="form-toggle-section">
+        {% if not show_form %}
+            <a href="?show_form=true" class="btn btn-success btn-lg">
+                <i class="fas fa-plus-circle"></i> 
+                Registrar Nueva Calificación
+            </a>
+        {% else %}
+            <a href="{% url 'gestionar_calificaciones' %}" class="btn btn-secondary">
+                <i class="fas fa-times"></i> 
+                Ocultar Formulario
+            </a>
+        {% endif %}
+    </div>
+
+    <!-- Formulario de registro -->
+    {% if show_form and form %}
+        <div class="card form-card">
+            <div class="card-header">
+                <h4><i class="fas fa-plus-circle"></i>Registrar Nueva Calificación</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'gestionar_calificaciones' %}" class="registration-form">
+                    {% csrf_token %}
+                    <div class="form-section">
+                        <h5 class="section-title">Selección</h5>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="{{ form.estudiante.id_for_label }}">
+                                    <i class="fas fa-user"></i> {{ form.estudiante.label }}
+                                </label>
+                                {{ form.estudiante }}
+                                {% if form.estudiante.errors %}
+                                    <div class="form-errors" id="estudiante-errors">
+                                        {% for error in form.estudiante.errors %}
+                                            <span class="error-message">
+                                                <i class="fas fa-exclamation-triangle"></i>
+                                                {{ error }}
+                                            </span>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="form-group">
+                                <label for="{{ form.curso.id_for_label }}">
+                                    <i class="fas fa-book"></i> {{ form.curso.label }}
+                                </label>
+                                {{ form.curso }}
+                                {% if form.curso.errors %}
+                                    <div class="form-errors" id="curso-errors">
+                                        {% for error in form.curso.errors %}
+                                            <span class="error-message">
+                                                <i class="fas fa-exclamation-triangle"></i>
+                                                {{ error }}
+                                            </span>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <h5 class="section-title">Detalles de Calificación</h5>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="{{ form.nota.id_for_label }}">
+                                    <i class="fas fa-star"></i> {{ form.nota.label }}
+                                </label>
+                                {{ form.nota }}
+                                {% if form.nota.errors %}
+                                    <div class="form-errors" id="nota-errors">
+                                        {% for error in form.nota.errors %}
+                                            <span class="error-message">
+                                                <i class="fas fa-exclamation-triangle"></i>
+                                                {{ error }}
+                                            </span>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="form-group">
+                                <label for="{{ form.descripcion.id_for_label }}">
+                                    <i class="fas fa-comment"></i> {{ form.descripcion.label }}
+                                </label>
+                                {{ form.descripcion }}
+                                {% if form.descripcion.errors %}
+                                    <div class="form-errors" id="descripcion-errors">
+                                        {% for error in form.descripcion.errors %}
+                                            <span class="error-message">
+                                                <i class="fas fa-exclamation-triangle"></i>
+                                                {{ error }}
+                                            </span>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" name="register" class="btn btn-success btn-lg">
+                            <i class="fas fa-save"></i> 
+                            Guardar Calificación
+                        </button>
+                        <a href="{% url 'gestionar_calificaciones' %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> 
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    {% elif show_form and not form %}
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            <div>
+                <strong>No se puede mostrar el formulario</strong>
+                <p>Verifica que tengas estudiantes y cursos asociados.</p>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+{% endblock %}

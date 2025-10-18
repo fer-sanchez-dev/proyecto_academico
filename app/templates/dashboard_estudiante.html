@@ -1,0 +1,178 @@
+
+{% extends 'base.html' %}
+{% block content %}
+<br>
+<br>
+
+<div class="container">
+    <div class="dashboard-header">
+        <h2><i class="fas fa-user-graduate"></i> Dashboard Estudiante</h2>
+        <p>Monitorea tu progreso académico y recibe recomendaciones personalizadas</p>
+    </div>
+
+    <!-- Resumen de Rendimiento -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-chart-line"></i> Rendimiento Académico</h3>
+        </div>
+        <div class="card-body">
+            {% if promedio or cursos_aprobados or total_cursos %}
+                <div class="form-row">
+                    <div class="form-group">
+                        <div class="alert alert-success">
+                            <i class="fas fa-calculator"></i>
+                            <div>
+                                <strong>Promedio General</strong>
+                                <div class="grade-value">{{ promedio|floatformat:2 }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="alert alert-warning">
+                            <i class="fas fa-check-circle"></i>
+                            <div>
+                                <strong>Cursos Aprobados</strong>
+                                <p><span class="grade-value">{{ cursos_aprobados }}</span> de <span class="grade-value">{{ total_cursos }}</span> cursos</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-clipboard-list empty-icon"></i>
+                    <p>No hay datos de rendimiento disponibles.</p>
+                    <small>Contacta al administrador para configurar tu perfil de estudiante.</small>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Calificaciones -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-star"></i> Mis Calificaciones</h3>
+        </div>
+        <div class="card-body">
+            {% if calificaciones %}
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th><i class="fas fa-book"></i> Curso</th>
+                                <th><i class="fas fa-star"></i> Nota</th>
+                                <th><i class="fas fa-comment"></i> Descripción</th>
+                                <th><i class="fas fa-calendar"></i> Fecha</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for calificacion in calificaciones %}
+                                <tr>
+                                    <td data-label="Curso">
+                                        <span class="course-badge">{{ calificacion.curso.nombre }}</span>
+                                    </td>
+                                    <td data-label="Nota">
+                                        <div class="grade-value">{{ calificacion.nota }}</div>
+                                    </td>
+                                    <td data-label="Descripción">
+                                        {{ calificacion.descripcion|default:"Sin descripción" }}
+                                    </td>
+                                    <td data-label="Fecha">
+                                        <span class="date-badge">{{ calificacion.fecha|date:"d/m/Y" }}</span>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-clipboard-list empty-icon"></i>
+                    <p>No hay calificaciones registradas.</p>
+                    <small>Las calificaciones aparecerán aquí cuando sean ingresadas por tus profesores.</small>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Alertas -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-bell"></i> Alertas Académicas</h3>
+        </div>
+        <div class="card-body">
+            {% if alertas %}
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th><i class="fas fa-info-circle"></i> Mensaje</th>
+                                <th><i class="fas fa-exclamation-triangle"></i> Nivel de Riesgo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for alerta in alertas %}
+                                <tr>
+                                    <td data-label="Mensaje">{{ alerta.mensaje }}</td>
+                                    <td data-label="Nivel">
+                                        <span class="course-badge">{{ alerta.nivel_riesgo }}</span>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="form-toggle-section">
+                    <a href="{% url 'alertas' %}" class="btn btn-primary">
+                        <i class="fas fa-eye"></i> Ver todas las alertas
+                    </a>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-shield-alt empty-icon"></i>
+                    <p>No hay alertas.</p>
+                    <small>¡Excelente! No tienes alertas académicas pendientes.</small>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Recomendaciones -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-lightbulb"></i> Recomendaciones</h3>
+        </div>
+        <div class="card-body">
+            {% if recomendaciones %}
+                {% for recomendacion in recomendaciones %}
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle"></i>
+                        {{ recomendacion }}
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-thumbs-up empty-icon"></i>
+                    <p>No hay recomendaciones específicas por ahora.</p>
+                    <small>Continúa con tu buen trabajo académico.</small>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Predicción de Riesgo -->
+    <div class="card">
+        <div class="card-header">
+            <h4><i class="fas fa-chart-pie"></i> Análisis de Riesgo Académico</h4>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-warning">
+                <i class="fas fa-info-circle"></i>
+                <div>
+                    <strong>Predicción del Sistema:</strong>
+                    <p>{{ riesgo }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

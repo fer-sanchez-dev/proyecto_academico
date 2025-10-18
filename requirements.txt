@@ -1,0 +1,10 @@
+django==4.2
+psycopg2-binary>=2.9.10
+torch==2.8.0
+numpy==2.3.2
+gunicorn==20.1.0  # Sugerido para RNF02
+python-dotenv>=1.0.1
+whitenoise
+pytest
+pytest-django
+pytest-cov  

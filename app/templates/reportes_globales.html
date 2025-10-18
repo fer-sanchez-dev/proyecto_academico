@@ -1,0 +1,270 @@
+<!-- RF09 -->
+{% extends 'base.html' %}
+{% block content %}
+<br>
+<br>
+
+<div class="container">
+    <div class="dashboard-header">
+        <h2><i class="fas fa-chart-bar"></i> Reportes Globales</h2>
+        <p>Análisis estadístico integral del rendimiento institucional</p>
+    </div>
+
+    <!-- Métricas principales -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-tachometer-alt"></i> Indicadores Clave de Rendimiento</h3>
+        </div>
+        <div class="card-body">
+            <div class="form-row">
+                <div class="form-group">
+                    <div class="alert alert-success">
+                        <i class="fas fa-calculator"></i>
+                        <div>
+                            <strong>Promedio Institucional</strong>
+                            <div class="grade-value" style="font-size: 2rem; margin: 0.5rem 0;">
+                                {{ promedio_institucional|floatformat:2 }}
+                            </div>
+                            <small>Calificación promedio de todos los estudiantes</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-percentage"></i>
+                        <div>
+                            <strong>Tasa de Aprobación</strong>
+                            <div class="grade-value" style="font-size: 2rem; margin: 0.5rem 0;">
+                                {{ porcentaje_aprobados|floatformat:2 }}%
+                            </div>
+                            <small>Porcentaje de estudiantes aprobados</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <div class="alert alert-success">
+                    <i class="fas fa-users"></i>
+                    <div>
+                        <strong>Población Estudiantil</strong>
+                        <p><span class="grade-value">{{ total_estudiantes }}</span> estudiantes registrados en el sistema</p>
+                        <small>Total de estudiantes activos en la institución</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Análisis detallado -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-chart-line"></i> Análisis de Rendimiento</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-info-circle"></i> Métrica</th>
+                            <th><i class="fas fa-chart-bar"></i> Valor</th>
+                            <th><i class="fas fa-clipboard-check"></i> Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td data-label="Métrica">Promedio Institucional</td>
+                            <td data-label="Valor">
+                                <div class="grade-value">{{ promedio_institucional|floatformat:2 }}</div>
+                            </td>
+                            <td data-label="Estado">
+                                {% if promedio_institucional >= 4.0 %}
+                                    <span class="course-badge">Excelente</span>
+                                {% elif promedio_institucional >= 3.5 %}
+                                    <span class="date-badge">Bueno</span>
+                                {% elif promedio_institucional >= 3.0 %}
+                                    <span class="date-badge">Regular</span>
+                                {% else %}
+                                    <span class="date-badge">Necesita Mejora</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td data-label="Métrica">Tasa de Aprobación</td>
+                            <td data-label="Valor">
+                                <div class="grade-value">{{ porcentaje_aprobados|floatformat:2 }}%</div>
+                            </td>
+                            <td data-label="Estado">
+                                {% if porcentaje_aprobados >= 80 %}
+                                    <span class="course-badge">Excelente</span>
+                                {% elif porcentaje_aprobados >= 70 %}
+                                    <span class="date-badge">Bueno</span>
+                                {% elif porcentaje_aprobados >= 60 %}
+                                    <span class="date-badge">Regular</span>
+                                {% else %}
+                                    <span class="date-badge">Preocupante</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td data-label="Métrica">Total de Estudiantes</td>
+                            <td data-label="Valor">
+                                <div class="grade-value">{{ total_estudiantes }}</div>
+                            </td>
+                            <td data-label="Estado">
+                                <span class="course-badge">Activos</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interpretación y recomendaciones -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-lightbulb"></i> Interpretación de Resultados</h3>
+        </div>
+        <div class="card-body">
+            <div class="form-section">
+                <h5 class="section-title">
+                    <i class="fas fa-chart-pie"></i>
+                    Análisis del Rendimiento Académico
+                </h5>
+                
+                {% if promedio_institucional >= 4.0 %}
+                    <div class="alert alert-success">
+                        <i class="fas fa-trophy"></i>
+                        <div>
+                            <strong>¡Excelente Rendimiento!</strong>
+                            <p>La institución mantiene un promedio sobresaliente. El rendimiento académico es ejemplar.</p>
+                        </div>
+                    </div>
+                {% elif promedio_institucional >= 3.5 %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-thumbs-up"></i>
+                        <div>
+                            <strong>Buen Rendimiento</strong>
+                            <p>La institución tiene un rendimiento sólido, con oportunidades de mejora hacia la excelencia.</p>
+                        </div>
+                    </div>
+                {% elif promedio_institucional >= 3.0 %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <div>
+                            <strong>Rendimiento Regular</strong>
+                            <p>Se requiere atención a las estrategias pedagógicas para mejorar el rendimiento general.</p>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <div>
+                            <strong>Requiere Intervención Inmediata</strong>
+                            <p>Es necesario implementar planes de mejoramiento académico urgentes.</p>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-section">
+                <h5 class="section-title">
+                    <i class="fas fa-target"></i>
+                    Recomendaciones Estratégicas
+                </h5>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <div class="alert alert-success">
+                            <i class="fas fa-users"></i>
+                            <div>
+                                <strong>Capacitación Docente</strong>
+                                <p>Implementar programas continuos de formación para profesores</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="alert alert-success">
+                            <i class="fas fa-chart-line"></i>
+                            <div>
+                                <strong>Monitoreo Continuo</strong>
+                                <p>Establecer seguimiento regular del progreso estudiantil</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Acciones -->
+    <div class="form-toggle-section">
+        <a href="{% url 'dashboard' %}" class="btn btn-secondary btn-lg">
+            <i class="fas fa-arrow-left"></i> 
+            Volver al Dashboard
+        </a>
+        <button class="btn btn-primary btn-lg" onclick="window.print()">
+            <i class="fas fa-print"></i>
+            Imprimir Reporte
+        </button>
+        <button class="btn btn-success" onclick="exportData()">
+            <i class="fas fa-download"></i>
+            Exportar Datos
+        </button>
+    </div>
+</div>
+
+<script>
+function exportData() {
+    // Crear datos para exportar
+    const data = {
+        'Promedio Institucional': '{{ promedio_institucional|floatformat:2 }}',
+        'Porcentaje de Aprobados': '{{ porcentaje_aprobados|floatformat:2 }}%',
+        'Total de Estudiantes': '{{ total_estudiantes }}',
+        'Fecha de Reporte': new Date().toLocaleDateString('es-ES')
+    };
+
+    // Crear CSV
+    const csv = Object.entries(data)
+        .map(([key, value]) => `"${key}","${value}"`)
+        .join('\n');
+
+    const csvHeader = '"Métrica","Valor"\n';
+    const csvContent = csvHeader + csv;
+
+    // Descargar archivo
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `reporte_global_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Mostrar fecha actual en el dashboard
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+    
+    const dateInfo = document.createElement('small');
+    dateInfo.style.color = 'var(--text-secondary)';
+    dateInfo.innerHTML = `<i class="fas fa-calendar"></i> Reporte generado el ${today}`;
+    
+    const header = document.querySelector('.dashboard-header p');
+    if (header) {
+        header.appendChild(document.createElement('br'));
+        header.appendChild(dateInfo);
+    }
+});
+</script>
+{% endblock %}

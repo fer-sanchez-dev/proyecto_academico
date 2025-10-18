@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+    <div class="card">
+        <div class="card-header">
+            <h2><i class="fas fa-trash-alt"></i> Confirmar Eliminación</h2>
+        </div>
+        <div class="card-body">
+            <p>¿Estás seguro de que deseas eliminar al estudiante <strong>{{ estudiante.usuario.first_name }} {{ estudiante.usuario.last_name }}</strong>?</p>
+            <p>Esta acción no se puede deshacer.</p>
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-danger btn-lg">
+                        <i class="fas fa-trash-alt"></i> Sí, Eliminar
+                    </button>
+                    <a href="{% url 'dashboard' %}" class="btn btn-secondary btn-lg">
+                        <i class="fas fa-times"></i> Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

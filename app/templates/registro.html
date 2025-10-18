@@ -1,0 +1,253 @@
+{% extends 'base.html' %}
+{% block content %}
+<br>
+<br>
+
+<div class="container">
+    <div class="dashboard-header">
+        <h2><i class="fas fa-user-plus"></i> Registro de Usuario</h2>
+        <p>Crea tu cuenta en EduTrack para acceder al sistema de gestión académica</p>
+    </div>
+
+    <!-- Mostrar mensajes -->
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    <i class="fas fa-info-circle"></i>
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-clipboard-check"></i> Información de Registro</h3>
+        </div>
+        <div class="card-body">
+            <form method="post" id="registrationForm">
+                {% csrf_token %}
+                
+                <div class="form-section">
+                    <h5 class="section-title">
+                        <i class="fas fa-user"></i>
+                        Información Personal
+                    </h5>
+                    
+                    {% for field in form %}
+                        <div class="form-group">
+                            <label for="{{ field.id_for_label }}">
+                                {% if field.name == 'email' %}
+                                    <i class="fas fa-envelope"></i>
+                                {% elif field.name == 'first_name' %}
+                                    <i class="fas fa-id-card"></i>
+                                {% elif field.name == 'last_name' %}
+                                    <i class="fas fa-id-card"></i>
+                                {% elif field.name == 'password1' %}
+                                    <i class="fas fa-lock"></i>
+                                {% elif field.name == 'password2' %}
+                                    <i class="fas fa-lock"></i>
+                                {% elif field.name == 'role' %}
+                                    <i class="fas fa-user-tag"></i>
+                                {% else %}
+                                    <i class="fas fa-info-circle"></i>
+                                {% endif %}
+                                {{ field.label }}
+                            </label>
+                            
+                            <!-- Aplicar clases CSS según el tipo de campo -->
+                            {% if field.field.widget.input_type == 'select' %}
+                                {{ field }}
+                            {% elif field.field.widget.input_type == 'password' %}
+                                {{ field }}
+                                {% if field.name == 'password1' %}
+                                    <div id="password-strength" class="password-feedback"></div>
+                                {% elif field.name == 'password2' %}
+                                    <div id="password-match" class="password-feedback"></div>
+                                {% endif %}
+                            {% else %}
+                                {{ field }}
+                            {% endif %}
+                            
+                            {% if field.errors %}
+                                <div class="alert alert-danger">
+                                    {% for error in field.errors %}
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            
+                            {% if field.help_text %}
+                                <small style="color: var(--text-secondary); font-size: 0.875rem;">
+                                    {{ field.help_text }}
+                                </small>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Términos y condiciones -->
+                <div class="form-section">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-info-circle"></i>
+                        <div>
+                            <strong>Términos y Condiciones</strong>
+                            <p>Al registrarte, aceptas:</p>
+                            <ul style="margin: 0.5rem 0 0 1.5rem; padding: 0;">
+                                <li>Usar el sistema de manera responsable</li>
+                                <li>Mantener la confidencialidad de tu cuenta</li>
+                                <li>Cumplir con las políticas institucionales</li>
+                                <li>Proporcionar información veraz y actualizada</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-success btn-lg" id="submitBtn">
+                        <i class="fas fa-user-plus"></i> 
+                        Crear Cuenta
+                    </button>
+                    <a href="{% url 'login' %}" class="btn btn-secondary">
+                        <i class="fas fa-sign-in-alt"></i> 
+                        Ya tengo cuenta
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Información adicional -->
+    <div class="card">
+        <div class="card-header">
+            <h4><i class="fas fa-question-circle"></i> ¿Necesitas Ayuda?</h4>
+        </div>
+        <div class="card-body">
+            <div class="form-row">
+                <div class="form-group">
+                    <div class="alert alert-success">
+                        <i class="fas fa-user-graduate"></i>
+                        <div>
+                            <strong>Estudiantes</strong>
+                            <p>Selecciona "Estudiante" para acceder a tus calificaciones y progreso académico</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="alert alert-success">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                        <div>
+                            <strong>Profesores</strong>
+                            <p>Selecciona "Profesor" para gestionar calificaciones y cursos</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-toggle-section">
+                <div class="alert alert-warning">
+                    <i class="fas fa-shield-alt"></i>
+                    <strong>Importante:</strong> Tu cuenta será revisada por el administrador antes de ser activada
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const password1 = document.getElementById('id_password1');
+    const password2 = document.getElementById('id_password2');
+    const strengthDiv = document.getElementById('password-strength');
+    const matchDiv = document.getElementById('password-match');
+    const submitBtn = document.getElementById('submitBtn');
+
+    if (password1 && strengthDiv) {
+        // Validar fortaleza de contraseña
+        password1.addEventListener('input', function() {
+            const password = this.value;
+            let strength = 0;
+            let feedback = '';
+
+            if (password.length >= 8) strength++;
+            if (/[A-Z]/.test(password)) strength++;
+            if (/[a-z]/.test(password)) strength++;
+            if (/[0-9]/.test(password)) strength++;
+            if (/[!@#$%^&*]/.test(password)) strength++;
+
+            switch(strength) {
+                case 0:
+                case 1:
+                case 2:
+                    feedback = '<span style="color: var(--danger);">Débil</span>';
+                    break;
+                case 3:
+                case 4:
+                    feedback = '<span style="color: var(--warning);">Media</span>';
+                    break;
+                case 5:
+                    feedback = '<span style="color: var(--success);">Fuerte</span>';
+                    break;
+            }
+
+            strengthDiv.innerHTML = password ? `Fortaleza: ${feedback}` : '';
+            checkFormValidity();
+        });
+    }
+
+    if (password2 && matchDiv) {
+        // Validar coincidencia de contraseñas
+        password2.addEventListener('input', function() {
+            if (password1) {
+                const match = password1.value === password2.value;
+                
+                if (password2.value) {
+                    if (match) {
+                        matchDiv.innerHTML = '<span style="color: var(--success);">✓ Las contraseñas coinciden</span>';
+                        password2.classList.remove('invalid');
+                        password2.classList.add('valid');
+                    } else {
+                        matchDiv.innerHTML = '<span style="color: var(--danger);">✗ Las contraseñas no coinciden</span>';
+                        password2.classList.remove('valid');
+                        password2.classList.add('invalid');
+                    }
+                } else {
+                    matchDiv.innerHTML = '';
+                    password2.classList.remove('valid', 'invalid');
+                }
+                
+                checkFormValidity();
+            }
+        });
+    }
+
+    function checkFormValidity() {
+        if (password1 && password2) {
+            const isValid = password1.value.length >= 8 && 
+                           password1.value === password2.value &&
+                           /[A-Z]/.test(password1.value) &&
+                           /[a-z]/.test(password1.value) &&
+                           /[0-9]/.test(password1.value);
+            
+            if (submitBtn) {
+                submitBtn.disabled = !isValid;
+                if (!isValid) {
+                    submitBtn.style.opacity = '0.6';
+                } else {
+                    submitBtn.style.opacity = '1';
+                }
+            }
+        }
+    }
+
+    // Aplicar clases CSS a los campos del formulario
+    const formControls = document.querySelectorAll('#registrationForm input, #registrationForm select, #registrationForm textarea');
+    formControls.forEach(function(control) {
+        if (!control.classList.contains('form-control')) {
+            control.classList.add('form-control');
+        }
+    });
+});
+</script>
+{% endblock %}

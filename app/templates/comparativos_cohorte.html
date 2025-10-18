@@ -1,0 +1,257 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+    <div class="dashboard-header">
+        <h2><i class="fas fa-chart-line"></i> Comparativos de Cohorte</h2>
+        <p>Análisis comparativo del rendimiento académico por cursos y profesores</p>
+    </div>
+
+    <!-- Mostrar mensajes -->
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    <i class="fas fa-info-circle"></i>
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Comparativo por Cursos -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-book"></i> Rendimiento por Curso</h3>
+        </div>
+        <div class="card-body">
+            {% if cursos %}
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th><i class="fas fa-book"></i> Curso</th>
+                                <th><i class="fas fa-user-tie"></i> Profesor</th>
+                                <th><i class="fas fa-calculator"></i> Promedio</th>
+                                <th><i class="fas fa-users"></i> Total Calificaciones</th>
+                                <th><i class="fas fa-check-circle"></i> Aprobados</th>
+                                <th><i class="fas fa-percentage"></i> % Aprobación</th>
+                                <th><i class="fas fa-signal"></i> Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for curso in cursos %}
+                                <tr>
+                                    <td data-label="Curso">
+                                        <span class="course-badge">{{ curso.nombre }}</span>
+                                    </td>
+                                    <td data-label="Profesor">
+                                        <div class="student-info">
+                                            <i class="fas fa-user-tie student-avatar"></i>
+                                            <span>{{ curso.profesor.first_name }} {{ curso.profesor.last_name }}</span>
+                                        </div>
+                                    </td>
+                                    <td data-label="Promedio">
+                                        {% if curso.promedio_curso %}
+                                            <span class="grade-badge grade-{% if curso.promedio_curso >= 4.0 %}excellent{% elif curso.promedio_curso >= 3.0 %}good{% else %}poor{% endif %}">
+                                                {{ curso.promedio_curso|floatformat:2 }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">Sin datos</span>
+                                        {% endif %}
+                                    </td>
+                                    <td data-label="Total Calificaciones">
+                                        <span class="badge badge-info">{{ curso.total_calificaciones }}</span>
+                                    </td>
+                                    <td data-label="Aprobados">
+                                        <span class="badge badge-success">{{ curso.aprobados }}</span>
+                                    </td>
+                                    <td data-label="% Aprobación">
+                                        <div class="progress-container">
+                                            <div class="progress">
+                                                <div class="progress-bar progress-bar-{% if curso.porcentaje_aprobacion >= 80 %}success{% elif curso.porcentaje_aprobacion >= 60 %}warning{% else %}danger{% endif %}" 
+                                                     style="width: {{ curso.porcentaje_aprobacion }}%"></div>
+                                            </div>
+                                            <span class="progress-text">{{ curso.porcentaje_aprobacion|floatformat:1 }}%</span>
+                                        </div>
+                                    </td>
+                                    <td data-label="Estado">
+                                        {% if curso.porcentaje_aprobacion >= 80 %}
+                                            <span class="status-badge status-excellent">Excelente</span>
+                                        {% elif curso.porcentaje_aprobacion >= 60 %}
+                                            <span class="status-badge status-good">Bueno</span>
+                                        {% elif curso.porcentaje_aprobacion >= 40 %}
+                                            <span class="status-badge status-warning">Regular</span>
+                                        {% else %}
+                                            <span class="status-badge status-danger">Crítico</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-chart-line empty-icon"></i>
+                    <p>No hay datos de cursos disponibles.</p>
+                    <small>Los datos aparecerán cuando haya calificaciones registradas</small>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Comparativo por Profesores -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-chalkboard-teacher"></i> Rendimiento por Profesor</h3>
+        </div>
+        <div class="card-body">
+            {% if profesores %}
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th><i class="fas fa-user-tie"></i> Profesor</th>
+                                <th><i class="fas fa-envelope"></i> Email</th>
+                                <th><i class="fas fa-calculator"></i> Promedio General</th>
+                                <th><i class="fas fa-users"></i> Total Calificaciones</th>
+                                <th><i class="fas fa-check-circle"></i> Aprobados</th>
+                                <th><i class="fas fa-percentage"></i> % Aprobación</th>
+                                <th><i class="fas fa-signal"></i> Desempeño</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for profesor in profesores %}
+                                <tr>
+                                    <td data-label="Profesor">
+                                        <div class="student-info">
+                                            <i class="fas fa-user-tie student-avatar"></i>
+                                            <div>
+                                                <strong>{{ profesor.first_name }} {{ profesor.last_name }}</strong>
+                                                <br><small class="text-muted">{{ profesor.username }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td data-label="Email">
+                                        <small>{{ profesor.email }}</small>
+                                    </td>
+                                    <td data-label="Promedio General">
+                                        {% if profesor.promedio_profesor %}
+                                            <span class="grade-badge grade-{% if profesor.promedio_profesor >= 4.0 %}excellent{% elif profesor.promedio_profesor >= 3.0 %}good{% else %}poor{% endif %}">
+                                                {{ profesor.promedio_profesor|floatformat:2 }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">Sin datos</span>
+                                        {% endif %}
+                                    </td>
+                                    <td data-label="Total Calificaciones">
+                                        <span class="badge badge-info">{{ profesor.total_calificaciones }}</span>
+                                    </td>
+                                    <td data-label="Aprobados">
+                                        <span class="badge badge-success">{{ profesor.aprobados }}</span>
+                                    </td>
+                                    <td data-label="% Aprobación">
+                                        <div class="progress-container">
+                                            <div class="progress">
+                                                <div class="progress-bar progress-bar-{% if profesor.porcentaje_aprobacion >= 80 %}success{% elif profesor.porcentaje_aprobacion >= 60 %}warning{% else %}danger{% endif %}" 
+                                                     style="width: {{ profesor.porcentaje_aprobacion }}%"></div>
+                                            </div>
+                                            <span class="progress-text">{{ profesor.porcentaje_aprobacion|floatformat:1 }}%</span>
+                                        </div>
+                                    </td>
+                                    <td data-label="Desempeño">
+                                        {% if profesor.porcentaje_aprobacion >= 85 %}
+                                            <span class="status-badge status-excellent">Excelente</span>
+                                        {% elif profesor.porcentaje_aprobacion >= 70 %}
+                                            <span class="status-badge status-good">Muy Bueno</span>
+                                        {% elif profesor.porcentaje_aprobacion >= 50 %}
+                                            <span class="status-badge status-warning">Bueno</span>
+                                        {% else %}
+                                            <span class="status-badge status-danger">Necesita Mejora</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-chalkboard-teacher empty-icon"></i>
+                    <p>No hay datos de profesores disponibles.</p>
+                    <small>Los datos aparecerán cuando haya profesores con calificaciones registradas</small>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Resumen General -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-chart-bar"></i> Resumen General</h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-book"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h4>{{ cursos.count }}</h4>
+                            <p>Cursos Activos</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-chalkboard-teacher"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h4>{{ profesores.count }}</h4>
+                            <p>Profesores</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h4>
+                                {% for curso in cursos %}
+                                    {% if curso.total_calificaciones > 0 %}{{ forloop.counter }}{% endif %}
+                                {% empty %}0{% endfor %}
+                            </h4>
+                            <p>Con Datos</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-award"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h4>Análisis</h4>
+                            <p>Completo</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Acciones -->
+    <div class="form-actions">
+        <a href="{% url 'dashboard' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver al Dashboard
+        </a>
+        <a href="{% url 'generar_reportes' %}" class="btn btn-primary">
+            <i class="fas fa-chart-bar"></i> Ver Reportes Generales
+        </a>
+    </div>
+</div>
+{% endblock %}

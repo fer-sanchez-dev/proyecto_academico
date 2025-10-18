@@ -1,0 +1,283 @@
+{% extends 'base.html' %}
+{% block content %}
+<br>
+<br>
+
+<div class="container">
+    <div class="dashboard-header">
+        <h2><i class="fas fa-user-edit"></i> Editar Perfil</h2>
+        <p>Actualiza tu información personal en EduTrack</p>
+    </div>
+
+    <!-- Mostrar mensajes -->
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-circle{% else %}info-circle{% endif %}"></i>
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-user-cog"></i> Información del Perfil</h3>
+        </div>
+        <div class="card-body">
+            <form method="post" id="profileForm" class="registration-form">
+                {% csrf_token %}
+                <div class="form-section">
+                    <h5 class="section-title">
+                        <i class="fas fa-user"></i> Datos Personales
+                    </h5>
+
+                    <div class="form-row">
+                        <!-- Campo de email -->
+                        <div class="form-group">
+                            <label for="{{ form.email.id_for_label }}" class="form-label">
+                                <i class="fas fa-envelope"></i> {{ form.email.label|default:"Correo Electrónico" }}
+                            </label>
+                            {{ form.email }}
+                            <div id="email-feedback" class="form-text"></div>
+                            {% if form.email.errors %}
+                                <div class="alert alert-danger">
+                                    {% for error in form.email.errors %}
+                                        <i class="fas fa-exclamation-triangle"></i> {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text" style="color: var(--text-secondary);">
+                                Ingresa tu correo electrónico registrado.
+                            </small>
+                        </div>
+
+                        <!-- Campo de first_name -->
+                        <div class="form-group">
+                            <label for="{{ form.first_name.id_for_label }}" class="form-label">
+                                <i class="fas fa-id-card"></i> {{ form.first_name.label|default:"Nombre" }}
+                            </label>
+                            {{ form.first_name }}
+                            <div id="first-name-feedback" class="form-text"></div>
+                            {% if form.first_name.errors %}
+                                <div class="alert alert-danger">
+                                    {% for error in form.first_name.errors %}
+                                        <i class="fas fa-exclamation-triangle"></i> {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text" style="color: var(--text-secondary);">
+                                Ingresa tu nombre.
+                            </small>
+                        </div>
+
+                        <!-- Campo de last_name -->
+                        <div class="form-group">
+                            <label for="{{ form.last_name.id_for_label }}" class="form-label">
+                                <i class="fas fa-id-card"></i> {{ form.last_name.label|default:"Apellido" }}
+                            </label>
+                            {{ form.last_name }}
+                            <div id="last-name-feedback" class="form-text"></div>
+                            {% if form.last_name.errors %}
+                                <div class="alert alert-danger">
+                                    {% for error in form.last_name.errors %}
+                                        <i class="fas fa-exclamation-triangle"></i> {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text" style="color: var(--text-secondary);">
+                                Ingresa tu apellido.
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Sección de contraseña (opcional) -->
+                    {% if form.password %}
+                        <h5 class="section-title">
+                            <i class="fas fa-lock"></i> Cambiar Contraseña
+                        </h5>
+                        <div class="form-row">
+                            <!-- Campo de password -->
+                            <div class="form-group">
+                                <label for="{{ form.password.id_for_label }}" class="form-label">
+                                    <i class="fas fa-lock"></i> {{ form.password.label|default:"Nueva Contraseña" }}
+                                </label>
+                                {{ form.password }}
+                                <div id="password-strength" class="form-text"></div>
+                                {% if form.password.errors %}
+                                    <div class="alert alert-danger">
+                                        {% for error in form.password.errors %}
+                                            <i class="fas fa-exclamation-triangle"></i> {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                <small class="form-text" style="color: var(--text-secondary);">
+                                    Ingresa una nueva contraseña (opcional, mínimo 8 caracteres).
+                                </small>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Botones -->
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-success btn-lg" id="submitBtn">
+                        <i class="fas fa-save"></i> Guardar Cambios
+                    </button>
+                    <a href="{% url 'dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const emailInput = document.getElementById('id_email');
+    const firstNameInput = document.getElementById('id_first_name');
+    const lastNameInput = document.getElementById('id_last_name');
+    const passwordInput = document.getElementById('id_password');
+    const emailFeedback = document.getElementById('email-feedback');
+    const firstNameFeedback = document.getElementById('first-name-feedback');
+    const lastNameFeedback = document.getElementById('last-name-feedback');
+    const passwordStrength = document.getElementById('password-strength');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // Aplicar clases CSS a los campos del formulario
+    const formControls = document.querySelectorAll('#profileForm input, #profileForm select, #profileForm textarea');
+    formControls.forEach(function(control) {
+        if (!control.classList.contains('form-control')) {
+            control.classList.add('form-control');
+        }
+    });
+
+    // Validación de email en tiempo real
+    if (emailInput && emailFeedback) {
+        emailInput.addEventListener('input', function() {
+            const email = this.value;
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (email) {
+                if (emailRegex.test(email)) {
+                    this.classList.remove('invalid');
+                    this.classList.add('valid');
+                    emailFeedback.innerHTML = '<span style="color: var(--success);">✓ Correo válido</span>';
+                } else {
+                    this.classList.remove('valid');
+                    this.classList.add('invalid');
+                    emailFeedback.innerHTML = '<span style="color: var(--danger);">✗ Correo inválido</span>';
+                }
+            } else {
+                this.classList.remove('valid', 'invalid');
+                emailFeedback.innerHTML = '';
+            }
+            checkFormValidity();
+        });
+    }
+
+    // Validación de first_name en tiempo real
+    if (firstNameInput && firstNameFeedback) {
+        firstNameInput.addEventListener('input', function() {
+            const value = this.value.trim();
+            if (value) {
+                if (value.length >= 2) {
+                    this.classList.remove('invalid');
+                    this.classList.add('valid');
+                    firstNameFeedback.innerHTML = '<span style="color: var(--success);">✓ Nombre válido</span>';
+                } else {
+                    this.classList.remove('valid');
+                    this.classList.add('invalid');
+                    firstNameFeedback.innerHTML = '<span style="color: var(--danger);">✗ El nombre debe tener al menos 2 caracteres</span>';
+                }
+            } else {
+                this.classList.remove('valid', 'invalid');
+                firstNameFeedback.innerHTML = '';
+            }
+            checkFormValidity();
+        });
+    }
+
+    // Validación de last_name en tiempo real
+    if (lastNameInput && lastNameFeedback) {
+        lastNameInput.addEventListener('input', function() {
+            const value = this.value.trim();
+            if (value) {
+                if (value.length >= 2) {
+                    this.classList.remove('invalid');
+                    this.classList.add('valid');
+                    lastNameFeedback.innerHTML = '<span style="color: var(--success);">✓ Apellido válido</span>';
+                } else {
+                    this.classList.remove('valid');
+                    this.classList.add('invalid');
+                    lastNameFeedback.innerHTML = '<span style="color: var(--danger);">✗ El apellido debe tener al menos 2 caracteres</span>';
+                }
+            } else {
+                this.classList.remove('valid', 'invalid');
+                lastNameFeedback.innerHTML = '';
+            }
+            checkFormValidity();
+        });
+    }
+
+    // Validación de fortaleza de contraseña
+    if (passwordInput && passwordStrength) {
+        passwordInput.addEventListener('input', function() {
+            const value = this.value;
+            let strength = 0;
+            let feedback = '';
+
+            if (value.length >= 8) strength++;
+            if (/[A-Z]/.test(value)) strength++;
+            if (/[a-z]/.test(value)) strength++;
+            if (/[0-9]/.test(value)) strength++;
+            if (/[!@#$%^&*]/.test(value)) strength++;
+
+            switch (strength) {
+                case 0:
+                case 1:
+                case 2:
+                    feedback = '<span style="color: var(--danger);">Débil</span>';
+                    this.classList.remove('valid');
+                    this.classList.add('invalid');
+                    break;
+                case 3:
+                case 4:
+                    feedback = '<span style="color: var(--warning);">Media</span>';
+                    this.classList.remove('invalid');
+                    this.classList.add('valid');
+                    break;
+                case 5:
+                    feedback = '<span style="color: var(--success);">Fuerte</span>';
+                    this.classList.remove('invalid');
+                    this.classList.add('valid');
+                    break;
+            }
+
+            passwordStrength.innerHTML = value ? `Fortaleza: ${feedback}` : '';
+            checkFormValidity();
+        });
+    }
+
+    // Habilitar/deshabilitar botón de submit
+    function checkFormValidity() {
+        const emailValid = emailInput.value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.value);
+        const firstNameValid = firstNameInput.value.trim().length >= 2;
+        const lastNameValid = lastNameInput.value.trim().length >= 2;
+        const passwordValid = !passwordInput || !passwordInput.value || (
+            passwordInput.value.length >= 8 &&
+            /[A-Z]/.test(passwordInput.value) &&
+            /[a-z]/.test(passwordInput.value) &&
+            /[0-9]/.test(passwordInput.value)
+        );
+
+        const isValid = emailValid && firstNameValid && lastNameValid && passwordValid;
+        if (submitBtn) {
+            submitBtn.disabled = !isValid;
+            submitBtn.style.opacity = isValid ? '1' : '0.6';
+        }
+    }
+});
+</script>
+{% endblock %}

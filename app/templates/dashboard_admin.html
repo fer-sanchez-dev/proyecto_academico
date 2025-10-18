@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+    <div class="dashboard-header">
+        <h2><i class="fas fa-tachometer-alt"></i> Dashboard Administrador</h2>
+        <p>Gestión de estudiantes, cursos y reportes</p>
+    </div>
+
+    <!-- Sección de Estudiantes -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-users"></i> Estudiantes</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for estudiante in estudiantes %}
+                            <tr>
+                                <td>{{ estudiante.usuario.first_name }} {{ estudiante.usuario.last_name }}</td>
+                                <td>
+                                    <a href="{% url 'editar_estudiante' estudiante.id %}" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-edit"></i> Editar
+                                    </a>
+                                    <a href="{% url 'eliminar_estudiante' estudiante.id %}" onclick="showConfirm('¿Estás seguro de eliminar el estudiante?', () => window.location.href=this.href); return false;" 
+                                       class="btn btn-danger btn-sm">
+                                        <i class="fas fa-trash-alt"></i> Eliminar
+                                    </a>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="2" class="empty-state">
+                                    <div class="empty-message">
+                                        <i class="fas fa-user-slash empty-icon"></i>
+                                        <p>No hay estudiantes registrados.</p>
+                                        <small>Registra un estudiante para comenzar.</small>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección de Cursos -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-book"></i> Cursos</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Profesor</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for curso in cursos %}
+                            <tr>
+                                <td>{{ curso.nombre }}</td>
+                                <td>{{ curso.profesor.first_name }} {{ curso.profesor.last_name }}</td>
+                                <td>
+                                    <a href="{% url 'editar_curso' curso.id %}" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-edit"></i> Editar
+                                    </a>
+                                    <a href="{% url 'eliminar_curso' curso.id %}" onclick="showConfirm('¿Estás seguro de eliminar este curso?', () => window.location.href=this.href); return false;" 
+                                       class="btn btn-danger btn-sm">
+                                        <i class="fas fa-trash-alt"></i> Eliminar
+                                    </a>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="3" class="empty-state">
+                                    <div class="empty-message">
+                                        <i class="fas fa-book-open empty-icon"></i>
+                                        <p>No hay cursos registrados.</p>
+                                        <small>Registra un curso para comenzar.</small>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Acciones del administrador -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-tools"></i> Acciones</h3>
+        </div>
+        <div class="card-body">
+            <div class="form-actions">
+                <a href="{% url 'gestionar_materias' %}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-book"></i> Gestionar Materias
+                </a>
+                <a href="{% url 'generar_reportes' %}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-chart-bar"></i> Ver Reportes
+                </a>
+                <a href="{% url 'comparativos_cohorte' %}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-chart-line"></i> Ver Comparativos de Cohorte
+                </a>
+                <a href="{% url 'config_agente' %}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-robot"></i> Configurar Agente IA
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
