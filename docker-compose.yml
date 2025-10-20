@@ -1,68 +1,114 @@
+
 services:
+  # 🧠 MONOLITO PRINCIPAL DJANGO
   web:
     build:
-      context: .
+      context: ./proyecto_academico
       dockerfile: Dockerfile
     image: proyecto_academico:prod
     container_name: django_app
     env_file:
-      - .env
+      - ./proyecto_academico/.env
     ports:
       - "8000:8000"
     depends_on:
       db:
-        condition: service_healthy  # 👈 Espera a que la BD esté realmente lista
+        condition: service_healthy
     restart: unless-stopped
-    
-    # Volúmenes para persistencia
     volumes:
       - logs_volume:/app/logs
       - static_volume:/vol/static
       - media_volume:/vol/media
-    
-    # Healthcheck mejorado
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/admin/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s  # Django tarda en iniciar con migraciones
-    
-    # Variables de entorno adicionales (opcional)
+      start_period: 40s
     environment:
       - DJANGO_SETTINGS_MODULE=proyecto_academico.settings
       - PYTHONUNBUFFERED=1
+    networks:
+    - app_network 
 
+  # 🧱 BASE DE DATOS DEL MONOLITO
   db:
-    image: postgres:15-alpine  # 👈 Versión más liviana
+    image: postgres:15-alpine
     container_name: postgres_db
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${DATABASE_NAME}
       POSTGRES_USER: ${DATABASE_USER}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
-      # Configuraciones de rendimiento
       POSTGRES_INITDB_ARGS: "-E UTF8 --locale=es_CO.UTF-8"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backups:/backups  # 👈 Para backups manuales
-    
-    # Healthcheck para la BD
+      - ./proyecto_academico/backups:/backups
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER} -d ${DATABASE_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
-    
-    # En producción NO expongas este puerto
-    # ports:
-    #   - "5432:5432"
+    networks:
+    - app_network 
+
+  # 🧩 MICROSERVICIO: CALIFICACIONES
+  micro_calificaciones:
+    build:
+      context: ./micro_calificaciones
+      dockerfile: Dockerfile
+    image: micro_calificaciones:dev
+    container_name: micro_calificaciones
+    env_file:
+      - ./micro_calificaciones/.env
+    ports:
+      - "8001:8001"
+    depends_on:
+      db_calificaciones:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ./micro_calificaciones:/app
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8001/api/health/ || exit 1"] 
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+    - app_network  # ✅ AGREGAR RED
+
+  # 🐘 BASE DE DATOS DEL MICROSERVICIO CALIFICACIONES
+  db_calificaciones:
+    image: postgres:15-alpine
+    container_name: db_calificaciones
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${CALIFICACIONES_DB_NAME}
+      POSTGRES_USER: ${CALIFICACIONES_DB_USER}
+      POSTGRES_PASSWORD: ${CALIFICACIONES_DB_PASSWORD}
+    volumes:
+      - db_calificaciones_data:/var/lib/postgresql/data
+    ports:
+      - "5435:5432"  # Cambiado el puerto host para evitar conflicto
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${CALIFICACIONES_DB_USER} -d ${CALIFICACIONES_DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+    - app_network 
 
 volumes:
   postgres_data:
-    driver: local
+  db_calificaciones_data:
   static_volume:
   media_volume:
   logs_volume:
+
+networks:
+  app_network:
+    driver: bridge
 

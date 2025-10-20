@@ -1,3 +1,4 @@
+import logging
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
@@ -8,6 +9,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.conf import settings
 from django.core.mail import send_mail
 from django.http import JsonResponse
 from django.template.loader import render_to_string
@@ -17,6 +19,10 @@ from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth.forms import AuthenticationForm, PasswordResetForm
 from .forms import CustomUserCreationForm, CalificacionForm, PerfilForm, CursoForm, ConfigAgenteForm, EstudianteForm, CustomUserEditForm
 from .models import CustomUser, Estudiante, Curso, Calificacion, Alerta, ConfigAgente
+from .services import microservice_client
+
+from .services import microservice_client 
+logger = logging.getLogger(__name__)
 
 def login_view(request):
     if request.method == 'POST':
@@ -117,22 +123,74 @@ def dashboard_view(request):
 
 @login_required
 def registrar_calificacion(request):
+    """Vista para registrar calificaciones (ahora con soporte para microservicio)"""
     if request.user.role != 'profesor':
         messages.error(request, 'Solo los profesores pueden registrar calificaciones.')
         return redirect('dashboard')
+    
+    # Configuración del microservicio
+    use_micro = getattr(settings, 'USE_MICROSERVICE_CALIFICACIONES', False)
+    mode = getattr(settings, 'MICROSERVICE_MODE', 'monolith')
+    
     if request.method == 'POST':
         form = CalificacionForm(request.POST)
         if form.is_valid():
+            # 1. Guardar en el monolito
             calificacion = form.save()
-            if calificacion.nota < 3.0:
+            logger.info(f"✅ Calificación guardada en monolito: ID={calificacion.id}")
+            
+            # 2. Sincronizar con microservicio si está habilitado
+            if use_micro and mode in ['hybrid', 'proxy']:
+                try:
+                    micro_data = {
+                        'estudiante_id': calificacion.estudiante.id,
+                        'curso_id': calificacion.curso.id,
+                        'nota': float(calificacion.nota),
+                        'descripcion': calificacion.descripcion
+                    }
+                    
+                    logger.info(f"🔄 Enviando calificación al microservicio: {micro_data}")
+                    result = microservice_client.crear_calificacion(micro_data)
+                    
+                    if result:
+                        logger.info(f"✅ Calificación creada en microservicio con ID: {result.get('id')}")
+                        messages.success(request, 'Calificación registrada correctamente.')
+                    else:
+                        logger.error("❌ Error al crear calificación en microservicio (respuesta None)")
+                        if mode == 'proxy':
+                            messages.warning(request, 'Advertencia: Error al sincronizar con microservicio')
+                        else:
+                            messages.success(request, 'Calificación registrada (solo en base local)')
+                
+                except Exception as e:
+                    logger.error(f"❌ Excepción al sincronizar con microservicio: {str(e)}")
+                    if mode == 'proxy':
+                        messages.error(request, f'Error al registrar en microservicio: {str(e)}')
+                    else:
+                        messages.success(request, 'Calificación registrada localmente (microservicio no disponible)')
+            else:
+                messages.success(request, 'Calificación registrada.')
+            
+            # 3. Crear alerta si la nota es baja (solo en modo monolito o híbrido)
+            if calificacion.nota < 3.0 and mode != 'proxy':
+                # En modo proxy, el microservicio crea la alerta automáticamente
                 Alerta.objects.create(
                     estudiante=calificacion.estudiante,
                     mensaje=f"Riesgo académico en {calificacion.curso.nombre}: Nota {calificacion.nota}",
                     nivel_riesgo='Medio'
                 )
+                logger.info(f"⚠️ Alerta de riesgo creada para estudiante {calificacion.estudiante.id}")
+            
             return redirect('dashboard')
+        else:
+            # Mostrar errores del formulario
+            for field, errors in form.errors.items():
+                field_name = 'Error general' if field == '__all__' else (form.fields[field].label or field)
+                for error in errors:
+                    messages.error(request, f'{field_name}: {error}')
     else:
         form = CalificacionForm()
+    
     return render(request, 'dashboard_profesor.html', {'form': form})
 
 @login_required
@@ -197,11 +255,34 @@ def eliminar_curso(request, curso_id):
 
 @login_required
 def alertas_view(request):
-    if request.user.role == 'estudiante':
-        estudiante = Estudiante.objects.get(usuario=request.user)
+    if request.user.role != 'estudiante':
+        return redirect('dashboard')
+    
+    estudiante = Estudiante.objects.get(usuario=request.user)
+    use_micro = getattr(settings, 'USE_MICROSERVICE_CALIFICACIONES', False)
+    mode = getattr(settings, 'MICROSERVICE_MODE', 'monolith')
+    
+    if use_micro and mode in ['hybrid', 'proxy']:
+        try:
+            # Obtener alertas del microservicio
+            alertas_data = microservice_client.obtener_alertas(estudiante_id=estudiante.id)
+            
+            if alertas_data is not None:
+                # Convertir a objetos tipo Django
+                from types import SimpleNamespace
+                alertas = [SimpleNamespace(**alerta) for alerta in alertas_data]
+                logger.info(f"✅ Alertas obtenidas del microservicio: {len(alertas)}")
+            else:
+                raise Exception("Microservicio no disponible")
+        except Exception as e:
+            logger.error(f"❌ Error al obtener alertas del microservicio: {str(e)}")
+            # Fallback al monolito
+            alertas = Alerta.objects.filter(estudiante=estudiante)
+            messages.warning(request, 'Usando datos locales (microservicio no disponible)')
+    else:
         alertas = Alerta.objects.filter(estudiante=estudiante)
-        return render(request, 'alertas.html', {'alertas': alertas})
-    return redirect('dashboard')
+    
+    return render(request, 'alertas.html', {'alertas': alertas})
 
 def password_reset_request(request):
     if request.method == 'POST':
@@ -253,70 +334,193 @@ def perfil_view(request):
 
 @login_required
 def gestionar_calificaciones(request):
+    """
+    Vista híbrida que puede usar el monolito, el microservicio, o ambos.
+    Modos:
+    - 'monolith': Solo usa el monolito (comportamiento original)
+    - 'hybrid': Usa el microservicio pero valida contra el monolito
+    - 'proxy': Solo usa el microservicio (migración completa)
+    """
     if request.user.role != 'profesor':
         messages.error(request, 'Solo los profesores pueden gestionar calificaciones.')
         return redirect('dashboard')
 
-    calificaciones = Calificacion.objects.filter(curso__profesor=request.user).order_by('-fecha')[:10]
+    mode = getattr(settings, 'MICROSERVICE_MODE', 'monolith')
+    use_micro = getattr(settings, 'USE_MICROSERVICE_CALIFICACIONES', False)
+    
+    calificaciones = []
     show_form = request.GET.get('show_form', 'false').lower() == 'true'
     form = None
+    micro_status = None
 
+    # ========== OBTENER CALIFICACIONES ==========
+    if use_micro and mode in ['hybrid', 'proxy']:
+        logger.info(f"🔄 Modo {mode}: Intentando obtener calificaciones desde microservicio")
+        
+        # Intentar obtener desde microservicio
+        try:
+            micro_data = microservice_client.obtener_calificaciones()
+            
+            if micro_data is not None:
+                # Convertir datos del micro a objetos tipo Django para el template
+                # (Necesario porque el template espera objetos con atributos)
+                from types import SimpleNamespace
+                
+                calificaciones_micro = []
+                for cal in micro_data[:10]:  # Limitar a 10 como en el original
+                    # Obtener estudiante y curso del monolito para mostrar nombres
+                    estudiante = Estudiante.objects.filter(id=cal['estudiante_id']).first()
+                    curso = Curso.objects.filter(id=cal['curso_id']).first()
+                    
+                    if estudiante and curso:
+                        cal_obj = SimpleNamespace(
+                            id=cal['id'],
+                            estudiante=estudiante,
+                            curso=curso,
+                            nota=cal['nota'],
+                            fecha=cal['fecha'],
+                            descripcion=cal.get('descripcion', '')
+                        )
+                        calificaciones_micro.append(cal_obj)
+                
+                if mode == 'proxy':
+                    # Modo proxy: solo usar microservicio
+                    calificaciones = calificaciones_micro
+                    micro_status = '✅ Microservicio (proxy mode)'
+                    logger.info(f"✅ Calificaciones obtenidas del microservicio: {len(calificaciones)}")
+                
+                elif mode == 'hybrid':
+                    # Modo híbrido: comparar con monolito
+                    calificaciones_monolito = list(
+                        Calificacion.objects.filter(curso__profesor=request.user).order_by('-fecha')[:10]
+                    )
+                    
+                    # Usar datos del microservicio pero validar
+                    calificaciones = calificaciones_micro
+                    
+                    # Comparar resultados
+                    if len(calificaciones_micro) == len(calificaciones_monolito):
+                        micro_status = f'✅ Microservicio + Monolito (coinciden: {len(calificaciones)} registros)'
+                        logger.info("✅ Resultados coinciden entre microservicio y monolito")
+                    else:
+                        micro_status = f'⚠️ Microservicio ({len(calificaciones_micro)}) vs Monolito ({len(calificaciones_monolito)})'
+                        logger.warning(f"⚠️ Discrepancia: Micro={len(calificaciones_micro)}, Monolito={len(calificaciones_monolito)}")
+            else:
+                raise Exception("Microservicio no disponible")
+        
+        except Exception as e:
+            logger.error(f"❌ Error al obtener calificaciones del microservicio: {str(e)}")
+            # Fallback al monolito
+            calificaciones = Calificacion.objects.filter(curso__profesor=request.user).order_by('-fecha')[:10]
+            micro_status = f'❌ Fallback a monolito (error: {str(e)[:50]})'
+            messages.warning(request, 'El microservicio no está disponible. Usando base de datos local.')
+    else:
+        # Modo monolito tradicional
+        calificaciones = Calificacion.objects.filter(curso__profesor=request.user).order_by('-fecha')[:10]
+        micro_status = '🏛️ Solo monolito' if not use_micro else '🔴 Microservicio deshabilitado'
+
+    # ========== MANEJAR POST (Crear/Actualizar) ==========
     if request.method == 'POST':
-        if request.POST.get('update_id'):  # Modo actualización
+        if request.POST.get('update_id'):
+            # ACTUALIZACIÓN
             cal_id = request.POST.get('update_id')
             calificacion = Calificacion.objects.filter(id=cal_id, curso__profesor=request.user).first()
             
             if calificacion:
                 form = CalificacionForm(request.POST, instance=calificacion, user=request.user)
                 if form.is_valid():
-                    form.save()
+                    updated_cal = form.save()
+                    
+                    # Actualizar en microservicio si está habilitado
+                    if use_micro and mode in ['hybrid', 'proxy']:
+                        micro_data = {
+                            'estudiante_id': updated_cal.estudiante.id,
+                            'curso_id': updated_cal.curso.id,
+                            'nota': float(updated_cal.nota),
+                            'descripcion': updated_cal.descripcion
+                        }
+                        result = microservice_client.actualizar_calificacion(cal_id, micro_data)
+                        
+                        if result:
+                            logger.info(f"✅ Calificación {cal_id} actualizada en microservicio")
+                        else:
+                            logger.error(f"❌ Error al actualizar calificación {cal_id} en microservicio")
+                            if mode == 'proxy':
+                                messages.warning(request, 'Advertencia: Error al sincronizar con microservicio')
+                    
                     messages.success(request, 'Calificación actualizada.')
                     return redirect('gestionar_calificaciones')
                 else:
-                    # Solo agregar errores una vez
                     for field, errors in form.errors.items():
-                        if field == '__all__':
-                            field_name = 'Error general'
-                        else:
-                            field_name = form.fields[field].label or field
+                        field_name = 'Error general' if field == '__all__' else (form.fields[field].label or field)
                         for error in errors:
                             messages.error(request, f'{field_name}: {error}')
                     show_form = False
             else:
                 messages.error(request, 'Calificación no encontrada.')
+        
         else:
-            # Modo registro nueva calificación
+            # CREACIÓN NUEVA
             form = CalificacionForm(request.POST, user=request.user)
             if form.is_valid():
                 calificacion = form.save()
-                if calificacion.nota < 3.0:
+                
+                # Crear en microservicio si está habilitado
+                if use_micro and mode in ['hybrid', 'proxy']:
+                    micro_data = {
+                        'estudiante_id': calificacion.estudiante.id,
+                        'curso_id': calificacion.curso.id,
+                        'nota': float(calificacion.nota),
+                        'descripcion': calificacion.descripcion
+                    }
+                    result = microservice_client.crear_calificacion(micro_data)
+                    
+                    if result:
+                        logger.info(f"✅ Calificación creada en microservicio con ID: {result.get('id')}")
+                    else:
+                        logger.error("❌ Error al crear calificación en microservicio")
+                        if mode == 'proxy':
+                            messages.warning(request, 'Advertencia: Error al sincronizar con microservicio')
+                
+                # Crear alerta si la nota es baja (esto lo hace el micro automáticamente)
+                if calificacion.nota < 3.0 and mode != 'proxy':
+                    # En modo proxy, el microservicio crea la alerta
                     Alerta.objects.create(
                         estudiante=calificacion.estudiante,
                         mensaje=f"Riesgo académico en {calificacion.curso.nombre}: Nota {calificacion.nota}",
                         nivel_riesgo='Medio'
                     )
+                
                 messages.success(request, 'Calificación registrada.')
                 return redirect('gestionar_calificaciones')
             else:
                 for field, errors in form.errors.items():
-                    if field == '__all__':
-                        field_name = 'Error general'
-                    else:
-                        field_name = form.fields[field].label or field
+                    field_name = 'Error general' if field == '__all__' else (form.fields[field].label or field)
                     for error in errors:
                         messages.error(request, f'{field_name}: {error}')
                 show_form = True
 
-    # Manejar eliminación
+    # ========== MANEJAR ELIMINACIÓN ==========
     if request.method == 'GET' and 'delete' in request.GET:
         cal_id = request.GET.get('delete')
         calificacion = Calificacion.objects.filter(id=cal_id, curso__profesor=request.user).first()
+        
         if calificacion:
+            # Eliminar del microservicio primero
+            if use_micro and mode in ['hybrid', 'proxy']:
+                result = microservice_client.eliminar_calificacion(cal_id)
+                if not result:
+                    logger.error(f"❌ Error al eliminar calificación {cal_id} del microservicio")
+                    if mode == 'proxy':
+                        messages.error(request, 'Error al eliminar del microservicio')
+                        return redirect('gestionar_calificaciones')
+            
+            # Eliminar del monolito
             calificacion.delete()
             messages.success(request, 'Calificación eliminada.')
             return redirect('gestionar_calificaciones')
 
-    # Crear formulario si se solicita mostrar
+    # ========== CREAR FORMULARIO SI SE SOLICITA ==========
     if show_form and not form:
         form = CalificacionForm(user=request.user)
         if not form.fields['estudiante'].queryset.exists():
@@ -327,9 +531,12 @@ def gestionar_calificaciones(request):
             form = None
 
     return render(request, 'dashboard_profesor.html', {
-        'calificaciones': calificaciones, 
+        'calificaciones': calificaciones,
         'form': form,
-        'show_form': show_form
+        'show_form': show_form,
+        'micro_status': micro_status,  # Mostrar estado del microservicio
+        'use_microservice': use_micro,
+        'microservice_mode': mode,
     })
 
 @login_required
@@ -427,28 +634,45 @@ def generar_reportes(request):
 
 @login_required
 def config_agente_view(request):
-    # RF10
     if request.user.role != 'admin':
         messages.error(request, 'Solo los administradores pueden configurar el agente.')
         return redirect('dashboard')
+    
+    use_micro = getattr(settings, 'USE_MICROSERVICE_CALIFICACIONES', False)
+    mode = getattr(settings, 'MICROSERVICE_MODE', 'monolith')
+    
     config, created = ConfigAgente.objects.get_or_create(id=1)
+    
     if request.method == 'POST':
+        from .forms import ConfigAgenteForm
         form = ConfigAgenteForm(request.POST, instance=config)
+        
         if form.is_valid():
-            form.save()
+            config = form.save()
+            
+            # Sincronizar con microservicio
+            if use_micro and mode in ['hybrid', 'proxy']:
+                micro_data = {
+                    'umbral_bajo': float(config.umbral_bajo),
+                    'umbral_medio': float(config.umbral_medio),
+                    'frecuencia_alertas': config.frecuencia_alertas,
+                    'criterios_recomendacion': config.criterios_recomendacion
+                }
+                result = microservice_client.actualizar_config(1, micro_data)
+                
+                if result:
+                    logger.info("✅ Configuración sincronizada con microservicio")
+                else:
+                    logger.error("❌ Error al sincronizar configuración con microservicio")
+                    messages.warning(request, 'Configuración guardada localmente, pero no se pudo sincronizar con el microservicio')
+            
             messages.success(request, 'Configuración actualizada.')
             return redirect('dashboard')
     else:
+        from .forms import ConfigAgenteForm
         form = ConfigAgenteForm(instance=config)
+    
     return render(request, 'config_agente.html', {'form': form})
-
-class SimpleRiskModel(nn.Module):
-    def __init__(self):
-        super(SimpleRiskModel, self).__init__()
-        self.fc = nn.Linear(1, 3)  # Input: promedio, Output: 3 clases (bajo, medio, alto)
-
-    def forward(self, x):
-        return torch.softmax(self.fc(x), dim=1)
 
 @login_required
 def predicciones_riesgo_view(request):

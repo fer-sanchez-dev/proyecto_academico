@@ -1,6 +1,12 @@
 {% extends 'base.html' %}
 
 {% block content %}
+{% if use_microservice %}
+<div class="alert {% if 'Fallback' in micro_status or '❌' in micro_status %}alert-warning{% elif '✅' in micro_status %}alert-success{% else %}alert-info{% endif %}" role="alert">
+    <strong>Estado del Microservicio:</strong> {{ micro_status }}
+    <small class="d-block mt-1">Modo: <code>{{ microservice_mode }}</code></small>
+</div>
+{% endif %}
 <br>
 <br>
 

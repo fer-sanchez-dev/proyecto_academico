@@ -1,5 +1,7 @@
 # settings.py
 import os
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -7,6 +9,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+sentry_sdk.init(
+    dsn="https://19acd0571ebfa9fbca48f9cb49425076@o4510215137853440.ingest.us.sentry.io/4510215145455616",
+    integrations=[DjangoIntegration()],
+    traces_sample_rate=1.0,
+    send_default_pii=True,
+)
+
 
 # ======================
 # Seguridad / Debug
@@ -38,6 +48,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'app',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [
@@ -240,6 +251,26 @@ LOGGING = {
     },
 }
 
+# ========== CONFIGURACIÓN MICROSERVICIOS ==========
+# Modo de operación del microservicio
+# 'monolith': Solo usa el monolito (comportamiento original)
+# 'hybrid': Usa el microservicio pero valida contra el monolito
+# 'proxy': Solo usa el microservicio (migración completa)
+MICROSERVICE_MODE = os.getenv('MICROSERVICE_MODE', 'hybrid')
+
+# Habilitar uso del microservicio de calificaciones
+USE_MICROSERVICE_CALIFICACIONES = os.getenv('USE_MICROSERVICE_CALIFICACIONES', 'True').lower() in ('true', '1', 'yes')
+
+# URL del microservicio (usar nombre del contenedor para red Docker)
+MICROSERVICE_CALIFICACIONES_URL = os.getenv(
+    'MICROSERVICE_CALIFICACIONES_URL',
+    'http://micro_calificaciones:8001/api'  # ← Esta es la correcta
+)
+
+# Timeout para llamadas al microservicio (en segundos)
+MICROSERVICE_TIMEOUT = int(os.getenv('MICROSERVICE_TIMEOUT', 5))
+
+    
 # 👇 AÑADIDO: Imprimir configuración útil al iniciar (solo en desarrollo)
 if DEBUG:
     print("=" * 60)
@@ -251,3 +282,6 @@ if DEBUG:
     print(f"📁 STATIC_ROOT: {STATIC_ROOT}")
     print(f"📁 MEDIA_ROOT: {MEDIA_ROOT}")
     print("=" * 60)
+    print(f"🔌 Microservicio Calificaciones: {'HABILITADO' if USE_MICROSERVICE_CALIFICACIONES else 'DESHABILITADO'}")
+    print(f"🌐 URL Microservicio: {MICROSERVICE_CALIFICACIONES_URL}")
+    print(f"⚙️  Modo: {MICROSERVICE_MODE}")
